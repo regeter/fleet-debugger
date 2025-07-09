@@ -8,7 +8,14 @@ import LogTable from "./LogTable";
 import ToggleBar from "./ToggleBar";
 import TripLogs from "./TripLogs";
 import CloudLogging from "./CloudLogging";
-import { uploadFile, getUploadedData, deleteUploadedData, uploadCloudLogs, saveDatasetAsJson } from "./localStorage";
+import {
+  uploadFile,
+  getUploadedData,
+  deleteUploadedData,
+  uploadCloudLogs,
+  saveDatasetAsJson,
+  saveToIndexedDB,
+} from "./localStorage";
 import _ from "lodash";
 import { getQueryStringValue, setQueryStringValue } from "./queryString";
 import "./global.css";
@@ -59,10 +66,10 @@ class App extends React.Component {
         showLiveJS: getToggleDefault("showLiveJS", false),
         showClientServerTimeDeltas: getToggleDefault("showClientServerTimeDeltas", false),
       },
-      uploadedDatasets: [null, null, null],
+      uploadedDatasets: [null, null, null, null, null],
       activeDatasetIndex: null,
       activeMenuIndex: null,
-      selectedRowIndexPerDataset: [-1, -1, -1],
+      selectedRowIndexPerDataset: [-1, -1, -1, -1, -1],
     };
     // Realtime updates are too heavy. There must be a better/ react way
     this.onSliderChangeDebounced = _.debounce((timeRange) => this.onSliderChange(timeRange), 25);
@@ -439,7 +446,7 @@ class App extends React.Component {
 
   checkUploadedDatasets = async () => {
     const newUploadedDatasets = await Promise.all(
-      [0, 1, 2].map(async (index) => {
+      [0, 1, 2, 3, 4].map(async (index) => {
         const data = await getUploadedData(index);
         log(`Dataset ${index}:`, data);
         if (data && data.rawLogs && Array.isArray(data.rawLogs) && data.rawLogs.length > 0) {
@@ -519,18 +526,80 @@ class App extends React.Component {
 
     const handleSaveClick = async (e) => {
       e.stopPropagation();
-      log(`Save initiated for dataset ${index}`);
+      log(`Export initiated for dataset ${index}`);
 
       // Close menu
       this.setState({ activeMenuIndex: null });
 
       try {
         await saveDatasetAsJson(index);
-        toast.success(`Dataset ${index + 1} saved successfully`);
-        log(`Dataset ${index} saved successfully`);
+        toast.success(`Dataset ${index + 1} exported successfully`);
+        log(`Dataset ${index} exported successfully`);
       } catch (error) {
-        console.error("Error saving dataset:", error);
-        toast.error(`Error saving dataset: ${error.message}`);
+        console.error("Error exporting dataset:", error);
+        toast.error(`Error exporting dataset: ${error.message}`);
+      }
+    };
+
+    const handlePruneClick = async (e) => {
+      e.stopPropagation();
+      log(`Prune initiated for dataset ${index}`);
+
+      // Close menu
+      this.setState({ activeMenuIndex: null });
+
+      try {
+        const { minTime, maxTime } = this.state.timeRange;
+        const data = await getUploadedData(index);
+
+        if (!data || !data.rawLogs || !Array.isArray(data.rawLogs)) {
+          throw new Error("No valid data to prune");
+        }
+
+        // Calculate how many logs will be removed
+        const originalLength = data.rawLogs.length;
+        const minDate = new Date(minTime);
+        const maxDate = new Date(maxTime);
+        const remainingLogs = data.rawLogs.filter((log) => {
+          const logTime = new Date(log.timestamp || log.insertTime);
+          return logTime >= minDate && logTime <= maxDate;
+        });
+
+        const removeCount = originalLength - remainingLogs.length;
+
+        if (
+          !confirm(
+            `This will remove ${removeCount} logs outside the selected time range.\nAre you sure you want to continue?`
+          )
+        ) {
+          log("Prune operation cancelled by user");
+          return;
+        }
+
+        log(`Pruning dataset ${index}: removing ${removeCount} logs outside time range`);
+
+        data.rawLogs = remainingLogs;
+
+        // Save the pruned dataset back to storage
+        await saveToIndexedDB(data, index);
+
+        // Update the current dataset if this is the active one
+        if (this.state.activeDatasetIndex === index) {
+          const tripLogs = new TripLogs(data.rawLogs, data.solutionType);
+          this.props.logData.tripLogs = tripLogs;
+          this.props.logData.solutionType = data.solutionType;
+
+          // Force update of components
+          this.forceUpdate();
+
+          // Select first row after pruning
+          this.selectFirstRow();
+        }
+
+        toast.success(`Dataset pruned: removed ${removeCount} logs outside the selected time range.`);
+      } catch (error) {
+        console.error("Error pruning dataset:", error);
+        toast.error(`Error pruning dataset: ${error.message}`);
       }
     };
 
@@ -598,13 +667,16 @@ class App extends React.Component {
         >
           {isUploaded ? `Dataset ${index + 1}` : `Select Dataset ${index + 1}`}
 
-          {isUploaded && (
+          {isUploaded && isActive && (
             <span className="dataset-button-actions" onClick={toggleMenu}>
               ▼
               {isMenuOpen && (
                 <div className="dataset-button-menu">
-                  <div className="dataset-button-menu-item save" onClick={handleSaveClick}>
-                    Save
+                  <div className="dataset-button-menu-item export" onClick={handleSaveClick}>
+                    Export
+                  </div>
+                  <div className="dataset-button-menu-item prune" onClick={handlePruneClick}>
+                    Prune
                   </div>
                   <div className="dataset-button-menu-item delete" onClick={handleDeleteClick}>
                     Delete
@@ -805,6 +877,7 @@ class App extends React.Component {
                 setFeaturedObject={this.setFeaturedObject}
                 setTimeRange={this.setTimeRange}
                 setCenterOnLocation={this.setCenterOnLocation}
+                focusSelectedRow={this.focusOnSelectedRow}
               />
             </div>
             <TimeSlider
@@ -815,6 +888,7 @@ class App extends React.Component {
               selectedEventTime={selectedEventTime}
               onRowSelect={(row, rowIndex) => this.onSelectionChange(row, rowIndex)}
               centerOnLocation={this.centerOnLocation}
+              focusSelectedRow={this.focusOnSelectedRow}
             />
             <ToggleBar
               toggles={this.toggles}
@@ -847,7 +921,7 @@ class App extends React.Component {
                     </select>
                   </div>
                 </div>
-                <div className="dataset-controls">{[0, 1, 2].map((index) => this.renderUploadButton(index))}</div>
+                <div className="dataset-controls">{[0, 1, 2, 3, 4].map((index) => this.renderUploadButton(index))}</div>
                 <div className="help-text">
                   <div>All Data remains client side</div>
                   <div>

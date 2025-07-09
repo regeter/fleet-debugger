@@ -114,7 +114,13 @@ export class TripObjects {
 
   addTripVisuals(trip, minDate, maxDate) {
     const tripId = trip.tripName;
+    const isNonTripSegment = tripId.startsWith("non-trip-segment-");
+
     log(`Processing trip visuals for ${tripId}`, {
+      isNonTripSegment,
+      coordsCount: trip.pathCoords.length,
+      firstUpdate: trip.firstUpdate,
+      lastUpdate: trip.lastUpdate,
       pickupPoint: trip.getPickupPoint(),
       actualPickupPoint: trip.getActualPickupPoint(),
       dropoffPoint: trip.getDropoffPoint(),
@@ -126,27 +132,40 @@ export class TripObjects {
     // Add path polyline
     const tripCoords = trip.getPathCoords(minDate, maxDate);
     if (tripCoords.length > 0) {
+      const strokeColor = isNonTripSegment ? "#474647" : getColor(trip.tripIdx);
+
       const path = new google.maps.Polyline({
         path: tripCoords,
         geodesic: true,
-        strokeColor: getColor(trip.tripIdx),
-        strokeOpacity: 0.5,
+        strokeColor: strokeColor,
+        strokeOpacity: 0.3,
         strokeWeight: 6,
-        clickable: false,
+        clickable: true,
+        zIndex: 1,
         map: this.map,
       });
 
-      // Add path events
       google.maps.event.addListener(path, "mouseover", () => {
-        path.setOptions({ strokeOpacity: 1, strokeWeight: 8 });
+        path.setOptions({ strokeOpacity: 0.7, strokeWeight: 8, zIndex: 100 });
       });
 
       google.maps.event.addListener(path, "mouseout", () => {
-        path.setOptions({ strokeOpacity: 0.5, strokeWeight: 6 });
+        path.setOptions({ strokeOpacity: 0.3, strokeWeight: 6, zIndex: 1 });
       });
 
+      // Handle click on polyline but pass the event through to the map
+      google.maps.event.addListener(path, "click", (event) => {
+        // Trigger a map click at the same position to maintain selection functionality
+        google.maps.event.trigger(this.map, "click", event);
+        return false; // Prevent default action to avoid double handling
+      });
 
       this.paths.set(tripId, path);
+    }
+
+    // Skip creating markers for non-trip segments
+    if (isNonTripSegment) {
+      return;
     }
 
     const markers = [];

@@ -1,9 +1,5 @@
-/*
- * src/Trip.js
- *
- * Processed log for a trip. Currently only includes very basic information
- * about the trip
- */
+// src/Trip.js
+
 import _ from "lodash";
 import Utils from "./Utils";
 
@@ -18,6 +14,7 @@ class Trip {
     this.firstUpdate = firstUpdate;
     this.lastUpdate = "Unknown";
     this.plannedPath = [];
+    this.logs = [];
   }
 
   getTraveledDistance() {
@@ -55,8 +52,8 @@ class Trip {
   // or synthesize pathCoords on the fly?
   appendCoords(lastLocation, timestamp) {
     this.pathCoords.push({
-      lat: lastLocation.rawlocation.latitude,
-      lng: lastLocation.rawlocation.longitude,
+      lat: lastLocation.location.latitude,
+      lng: lastLocation.location.longitude,
       trip_id: this.tripName,
       date: new Date(timestamp),
     });
@@ -72,27 +69,35 @@ class Trip {
     return this.plannedPath;
   }
 
-  getPoint(type, path) {
-    return _.get(
-      _.find(this.logs, (log) => log["@type"] === type && _.get(log, path)),
-      path
-    );
+  getPointFromLogs(path, useLatest) {
+    if (!this.logs || this.logs.length === 0) {
+      return null;
+    }
+
+    const sortedLogs = useLatest ? _.sortBy(this.logs, "timestampMS").reverse() : this.logs;
+    for (const log of sortedLogs) {
+      const point = _.get(log, `response.${path}`);
+      if (point) {
+        return point;
+      }
+    }
+    return null;
   }
 
   getPickupPoint() {
-    return this.getPoint("createTrip", "request.trip.pickuppoint.point");
+    return this.getPointFromLogs("pickuppoint.point", true);
   }
 
   getDropoffPoint() {
-    return this.getPoint("createTrip", "request.trip.dropoffpoint.point");
+    return this.getPointFromLogs("dropoffpoint.point", true);
   }
 
   getActualPickupPoint() {
-    return this.getPoint("updateTrip", "response.actualpickuppoint.point");
+    return this.getPointFromLogs("actualpickuppoint.point", false);
   }
 
   getActualDropoffPoint() {
-    return this.getPoint("updateTrip", "response.actualdropoffpoint.point");
+    return this.getPointFromLogs("actualdropoffpoint.point", false);
   }
 }
 
@@ -101,7 +106,17 @@ class Trip {
  * Colors were chosen for visibility
  */
 export function getColor(tripIdx) {
-  const colors = ["#2d7dd2", "#97cc04", "#eeb902", "#f45d01", "#474647", "00aa00"];
+  const colors = [
+    "#007bff", // Blue
+    "#97cc04", // Lime Green
+    "#d63384", // Magenta
+    "#198754", // Green
+    "#f45d01", // Orange
+    "#6A0DAD", // Purple
+    "#fdc500", // Gold
+    "#0dcaf0", // Cyan
+    "#8B4513", // Brown
+  ];
   return colors[tripIdx % colors.length];
 }
 
