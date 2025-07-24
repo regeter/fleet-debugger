@@ -89,9 +89,6 @@ const AddColumnButton = (props) => {
 function Dataframe({ featuredObject, extraColumns, onColumnToggle, onToggleMarker, dynamicMarkerLocations }) {
   const handleCopyRoot = useCallback(() => {
     if (!featuredObject) return;
-    log("Dataframe: Copy All button clicked, excluding helper nodes.");
-
-    // Use lodash's omit function to create a new object without the specified keys.
     const objectToCopy = _.omit(featuredObject, ["lastlocation", "lastlocationResponse"]);
 
     const jsonString = JSON.stringify(objectToCopy, null, 2);

@@ -26,7 +26,7 @@ import { ALL_TOGGLES, getVisibleToggles } from "./MapToggles";
 
 const MARKER_COLORS = [
   "#EA4335", // Red
-  "#4285F4", // Blue
+  "#E91E63", // Pink
   "#34A853", // Green
   "#FBBC05", // Yellow
   "#9C27B0", // Purple
@@ -155,14 +155,11 @@ class App extends React.Component {
    * in the json object was clicked on
    */
   onDataframePropClick(jsonPath) {
-    log(`Dataframe property click for path: ${jsonPath}`);
     this.setState((prevState) => {
       let newColumns;
       if (_.find(prevState.extraColumns, (x) => x === jsonPath)) {
-        log(`Removing column ${jsonPath}`);
         newColumns = _.without(prevState.extraColumns, jsonPath);
       } else {
-        log(`Adding column ${jsonPath}`);
         newColumns = [...prevState.extraColumns, jsonPath];
       }
       return { extraColumns: newColumns };
@@ -233,12 +230,10 @@ class App extends React.Component {
   handlePlayStop = () => {
     this.setState((prevState) => {
       if (!prevState.isPlaying) {
-        log("Starting playback.");
         this.timerID = setInterval(() => {
           this.handleNextEvent();
         }, prevState.playSpeed);
       } else {
-        log("Stopping playback.");
         clearInterval(this.timerID);
       }
       return { isPlaying: !prevState.isPlaying };
@@ -520,13 +515,11 @@ class App extends React.Component {
 
     // Add event listener for outside clicks when a menu is open
     if (isMenuOpen && !this._outsideClickHandler) {
-      log("Adding outside click handler for menu.");
       this._outsideClickHandler = () => {
         handleOutsideClick();
       };
       document.addEventListener("click", this._outsideClickHandler);
     } else if (!isMenuOpen && this._outsideClickHandler) {
-      log("Removing outside click handler for menu.");
       document.removeEventListener("click", this._outsideClickHandler);
       this._outsideClickHandler = null;
     }
@@ -651,7 +644,6 @@ class App extends React.Component {
   };
 
   setRenderMarkerOnMap = (func) => {
-    log("App.js: setRenderMarkerOnMap called");
     this.renderMarkerOnMap = func;
   };
 
