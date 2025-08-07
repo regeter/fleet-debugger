@@ -31,7 +31,7 @@ function MapComponent({
   const locationProviderRef = useRef(null);
   const bubbleMapRef = useRef({});
   const trafficLayerRef = useRef(null);
-  const dataMakersRef = useRef([]);
+  const vehicleMarkersRef = useRef({});
   const trafficPolylinesRef = useRef([]);
   const panoramaRef = useRef(null);
   const dynamicMarkersRef = useRef([]);
@@ -210,6 +210,8 @@ function MapComponent({
       log("Map.js: Cleanup from initialization useEffect.");
       dynamicMarkersRef.current.forEach((m) => m.setMap(null));
       dynamicMarkersRef.current = [];
+      Object.values(vehicleMarkersRef.current).forEach((marker) => marker && marker.setMap(null));
+      vehicleMarkersRef.current = {};
       window.google.maps.event.removeListener(clickListener);
       window.google.maps.event.removeListener(centerListener);
       window.google.maps.event.removeListener(headingListener);
@@ -260,6 +262,31 @@ function MapComponent({
     trafficPolylinesRef.current = [];
 
     if (!selectedRow) return;
+    const eventType = selectedRow["@type"];
+    const isTripEvent = ["gettrip", "updatetrip", "createtrip"].includes(eventType?.toLowerCase());
+
+    if (isTripEvent) {
+      const tripRouteSegment = _.get(selectedRow, "response.currentroutesegment");
+      if (tripRouteSegment) {
+        try {
+          const decodedPoints = decode(tripRouteSegment);
+          if (decodedPoints?.length > 0) {
+            const validWaypoints = decodedPoints.map((p) => ({ lat: p.latDegrees(), lng: p.lngDegrees() }));
+            const trafficPolyline = new TrafficPolyline({
+              path: validWaypoints,
+              map,
+              zIndex: 3,
+              isTripEvent: true,
+            });
+            trafficPolylinesRef.current.push(...trafficPolyline.polylines);
+          }
+        } catch (error) {
+          log("Error processing trip event polyline:", error);
+        }
+      } else {
+        log(`Map.js: Trip event detected, but no 'response.currentroutesegment' found.`);
+      }
+    }
 
     const routeSegment =
       _.get(selectedRow, "request.vehicle.currentroutesegment") ||
@@ -281,8 +308,7 @@ function MapComponent({
             trafficRendering: structuredClone(trafficRendering),
             currentLatLng: location,
           });
-
-          trafficPolylinesRef.current = trafficPolyline.polylines;
+          trafficPolylinesRef.current.push(...trafficPolyline.polylines);
         }
       } catch (error) {
         console.error("Error processing route segment polyline:", error);
@@ -293,10 +319,14 @@ function MapComponent({
   // Effect for updating selected row vehicle marker
   useEffect(() => {
     const map = mapRef.current;
-    dataMakersRef.current.forEach((m) => m.setMap(null));
-    dataMakersRef.current = [];
+    if (!map) {
+      return;
+    }
 
-    if (!map || !selectedRow) return;
+    if (!selectedRow) {
+      Object.values(vehicleMarkersRef.current).forEach((marker) => marker && marker.setMap(null));
+      return;
+    }
 
     const location =
       _.get(selectedRow.lastlocation, "location") ||
@@ -309,58 +339,85 @@ function MapComponent({
       const heading =
         _.get(selectedRow.lastlocation, "heading") || _.get(selectedRow.lastlocationResponse, "heading") || 0;
 
-      const backgroundMarker = new window.google.maps.Marker({
-        position: pos,
-        map,
-        icon: {
-          path: window.google.maps.SymbolPath.CIRCLE,
-          fillColor: "#FFFFFF",
-          fillOpacity: 0.7,
-          scale: 18,
-          strokeColor: "#FFFFFF",
-          strokeWeight: 2,
-          strokeOpacity: 0.3,
-        },
-        zIndex: 9,
-      });
-      const chevronMarker = new window.google.maps.Marker({
-        position: pos,
-        map,
-        icon: {
-          path: "M -1,1 L 0,-1 L 1,1 L 0,0.5 z",
-          fillColor: "#4285F4",
-          fillOpacity: 1,
-          scale: 10,
-          strokeColor: "#4285F4",
-          strokeWeight: 1,
-          rotation: heading,
-        },
-        zIndex: 10,
-      });
-      dataMakersRef.current.push(backgroundMarker, chevronMarker);
+      if (vehicleMarkersRef.current.background) {
+        vehicleMarkersRef.current.background.setPosition(pos);
+        if (!vehicleMarkersRef.current.background.getMap()) {
+          vehicleMarkersRef.current.background.setMap(map);
+        }
+      } else {
+        vehicleMarkersRef.current.background = new window.google.maps.Marker({
+          position: pos,
+          map,
+          icon: {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            fillColor: "#FFFFFF",
+            fillOpacity: 0.7,
+            scale: 18,
+            strokeColor: "#FFFFFF",
+            strokeWeight: 2,
+            strokeOpacity: 0.3,
+          },
+          zIndex: 9,
+        });
+      }
+
+      if (vehicleMarkersRef.current.chevron) {
+        vehicleMarkersRef.current.chevron.setPosition(pos);
+        const icon = vehicleMarkersRef.current.chevron.getIcon();
+        icon.rotation = heading;
+        vehicleMarkersRef.current.chevron.setIcon(icon);
+        if (!vehicleMarkersRef.current.chevron.getMap()) {
+          vehicleMarkersRef.current.chevron.setMap(map);
+        }
+      } else {
+        vehicleMarkersRef.current.chevron = new window.google.maps.Marker({
+          position: pos,
+          map,
+          icon: {
+            path: "M -1,1 L 0,-1 L 1,1 L 0,0.5 z",
+            fillColor: "#4285F4",
+            fillOpacity: 1,
+            scale: 10,
+            strokeColor: "#4285F4",
+            strokeWeight: 1,
+            rotation: heading,
+          },
+          zIndex: 10,
+        });
+      }
 
       const rawLocation = _.get(selectedRow.lastlocation, "rawlocation");
       if (rawLocation?.latitude && rawLocation?.longitude) {
         const rawPos = { lat: rawLocation.latitude, lng: rawLocation.longitude };
-        const rawLocationMarker = new window.google.maps.Marker({
-          position: rawPos,
-          map,
-          icon: {
-            path: window.google.maps.SymbolPath.CIRCLE,
-            fillColor: "#FF0000",
-            fillOpacity: 1,
-            scale: 2,
-            strokeColor: "#FF0000",
-            strokeWeight: 1,
-          },
-          zIndex: 8,
-        });
-        dataMakersRef.current.push(rawLocationMarker);
+        if (vehicleMarkersRef.current.rawLocation) {
+          vehicleMarkersRef.current.rawLocation.setPosition(rawPos);
+          if (!vehicleMarkersRef.current.rawLocation.getMap()) {
+            vehicleMarkersRef.current.rawLocation.setMap(map);
+          }
+        } else {
+          vehicleMarkersRef.current.rawLocation = new window.google.maps.Marker({
+            position: rawPos,
+            map,
+            icon: {
+              path: window.google.maps.SymbolPath.CIRCLE,
+              fillColor: "#FF0000",
+              fillOpacity: 1,
+              scale: 2,
+              strokeColor: "#FF0000",
+              strokeWeight: 1,
+            },
+            zIndex: 8,
+          });
+        }
+      } else if (vehicleMarkersRef.current.rawLocation) {
+        vehicleMarkersRef.current.rawLocation.setMap(null);
       }
 
       if (isFollowingVehicle) {
         map.setCenter(pos);
       }
+    } else {
+      Object.values(vehicleMarkersRef.current).forEach((marker) => marker && marker.setMap(null));
     }
   }, [selectedRow, isFollowingVehicle]);
 
