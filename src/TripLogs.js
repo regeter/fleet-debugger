@@ -121,7 +121,10 @@ function adjustFieldFormat(log, origPath, newPath, stringToTrim) {
 function processRawLogs(rawLogs, solutionType) {
   log(`Processing ${rawLogs.length} raw logs for ${solutionType}`);
   const vehiclePath = solutionType === "LMFS" ? "request.deliveryvehicle" : "request.vehicle";
-  const origLogs = rawLogs.map(toLowerKeys);
+
+  // toLowerKeys is no longer needed as of Oct 2025, but keeping it to support existing Datasets.
+  const origLogs = rawLogs.length > 0 && !("jsonpayload" in rawLogs[0]) ? rawLogs.map(toLowerKeys) : rawLogs;
+
   const isReversed =
     origLogs.length > 1 && new Date(origLogs[0].timestamp) > new Date(origLogs[origLogs.length - 1].timestamp);
   log(`Raw logs are ${isReversed ? "reversed" : "chronological"}`);
@@ -459,7 +462,7 @@ class TripLogs {
     } else {
       const currentTrips = _.get(logEntry, "response.currenttrips");
       if (currentTrips && Array.isArray(currentTrips) && currentTrips.length > 0) {
-        return currentTrips.join();
+        return currentTrips[0];
       }
     }
   }
