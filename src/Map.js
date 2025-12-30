@@ -171,8 +171,6 @@ function MapComponent({
 
     const followButton = document.createElement("div");
     followButton.className = "follow-vehicle-button";
-    followButton.style.position = "relative";
-    followButton.style.margin = "0";
     followButton.innerHTML = `<div class="follow-vehicle-background"></div><svg xmlns="http://www.w3.org/2000/svg" viewBox="-10 -10 20 20" width="24" height="24" class="follow-vehicle-chevron"><path d="M -10,10 L 0,-10 L 10,10 L 0,5 z" fill="#4285F4" stroke="#4285F4" stroke-width="1"/></svg>`;
     followButton.onclick = () => {
       log("Follow vehicle button clicked.");
