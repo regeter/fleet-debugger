@@ -484,7 +484,6 @@ function MapComponent({
       const hasFlp = flpLat !== undefined && flpLng !== undefined;
       const isMatch = hasRaw && hasFlp && rawLat === flpLat && rawLng === flpLng;
 
-      // Helper to update or create a marker
       const updateMarker = (markerRefName, position, color, zIndex, scale = 2) => {
         if (!position) {
           if (vehicleMarkersRef.current[markerRefName]) {
@@ -499,7 +498,6 @@ function MapComponent({
           if (!vehicleMarkersRef.current[markerRefName].getMap()) {
             vehicleMarkersRef.current[markerRefName].setMap(map);
           }
-          // Ensure color and scale are correct
           const icon = vehicleMarkersRef.current[markerRefName].getIcon();
           if (icon.fillColor !== color || icon.scale !== scale) {
             icon.fillColor = color;
