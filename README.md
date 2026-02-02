@@ -90,6 +90,7 @@ To reload the original demo data:
     ```bash
     npm install
     ```
+4.  Add Maps Javascript API Key to src/constants.js
 
 ### Start development server
 
