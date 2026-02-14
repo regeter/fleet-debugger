@@ -21,7 +21,7 @@
     "@testing-library/jest-dom": "^6.4.6",
     "@turf/turf": "^7.2.0",
     "@vis.gl/react-google-maps": "^1.5.2",
-    "axios": "^1.7.2",
+    "axios": "^1.13.5",
     "express": "^4.22.1",
     "googleapis": "^140.0.1",
     "jszip": "^3.10.1",
@@ -38,7 +38,7 @@
     "react-window": "^1.8.10",
     "react18-json-view": "^0.2.9",
     "s2polyline-ts": "^1.0.0",
-    "webpack": "5.94.0",
+    "webpack": "5.105.0",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
