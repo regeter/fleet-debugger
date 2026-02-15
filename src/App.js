@@ -710,9 +710,6 @@ class App extends React.Component {
                   <div className="dataset-button-menu-item export" onClick={handleGoogleSheetExport}>
                     Export GSheet
                   </div>
-                  <div className="dataset-button-menu-item export" onClick={handleGoogleSheetExport}>
-                    Export GSheet
-                  </div>
                   <div className="dataset-button-menu-item prune" onClick={handlePruneClick}>
                     Prune
                   </div>
