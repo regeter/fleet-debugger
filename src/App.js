@@ -542,7 +542,8 @@ class App extends React.Component {
             <a href={sheetUrl} target="_blank" rel="noopener noreferrer">
               Google Sheet
             </a>
-          </span>
+          </span>,
+          { autoClose: false }
         );
       } catch (error) {
         log(`Error exporting to Google Sheet: ${error.message}`, error);
@@ -705,6 +706,9 @@ class App extends React.Component {
                 <div className="dataset-button-menu">
                   <div className="dataset-button-menu-item export" onClick={handleSaveClick}>
                     Export File
+                  </div>
+                  <div className="dataset-button-menu-item export" onClick={handleGoogleSheetExport}>
+                    Export GSheet
                   </div>
                   <div className="dataset-button-menu-item export" onClick={handleGoogleSheetExport}>
                     Export GSheet
