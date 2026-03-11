@@ -59,7 +59,7 @@ You can also import datasets that have been exported to Google Sheets. Clicking 
 
 **Deep Linking:** You can share Google Sheets directly using a deep link parameter: `?sheetId=[SHEET_ID]`. When someone opens the Fleet Debugger with this link, it will automatically authenticate and load the Google Sheet logs directly into their local clipboard, where they can be pasted into any Dataset.
 
-> **Note**: All data processing happens client-side. Your logs or API keys are not uploaded to any server. Data is stored in your browser's Local Storage.
+> **Note**: All data processing happens client-side. Your logs are not uploaded to any server. Data is stored in your browser's Local Storage.
 
 ## Restricted Use Logs
 
