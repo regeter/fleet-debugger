@@ -82,12 +82,7 @@ export const DatasetSideLoading = ({ onLogsReceived, onFileUpload, setLocalError
       <div className="cloud-logging-buttons">
         {children}
         {onPasteClipboard && hasClipboard && (
-          <button
-            type="button"
-            onClick={onPasteClipboard}
-            className="sideload-logs-button"
-            style={{ backgroundColor: "#ff9800", color: "white" }}
-          >
+          <button type="button" onClick={onPasteClipboard} className="sideload-logs-button">
             Paste Dataset
           </button>
         )}

@@ -226,17 +226,40 @@ class App extends React.Component {
       const token = await requestSheetsToken();
       const logs = await importFromGoogleSheet(sheetId, token);
 
-      const logsToProcess = logs.map((logEntry) => ({
-        jsonPayload: logEntry,
+      const logsWithTimestamp = logs.map((logEntry) => ({
+        ...logEntry,
         timestamp: logEntry.timestamp || new Date().toISOString(),
       }));
 
-      await uploadCloudLogs(logsToProcess, "_clipboard");
+      await uploadCloudLogs(logsWithTimestamp, "_clipboard");
 
       toast.success("Dataset from Google Sheet loaded. You can now Paste into any dataset.", { autoClose: false });
     } catch (error) {
       log(`Error loading shared sheet: ${error.message}`, error);
-      toast.error(`Failed to load shared sheet: ${error.message}`);
+
+      // If the browser blocks the popup (often happens on page load without user gesture)
+      if (error.message && error.message.includes("Failed to open popup window")) {
+        toast.warning(
+          <div>
+            Popup blocked by browser.
+            <br />
+            <br />
+            <button
+              className="toggle-button toggle-button-active"
+              onClick={() => {
+                toast.dismiss();
+                this.loadSharedSheet(sheetId);
+              }}
+              style={{ padding: "4px 8px", fontSize: "14px" }}
+            >
+              Load Google Sheet
+            </button>
+          </div>,
+          { autoClose: false, closeOnClick: false }
+        );
+      } else {
+        toast.error(`Failed to load shared sheet: ${error.message}`);
+      }
     }
   };
 
@@ -632,7 +655,8 @@ class App extends React.Component {
             <a href={sheetUrl} target="_blank" rel="noopener noreferrer">
               Google Sheet
             </a>
-            . <a href={deepLink}>Deep Link</a>
+            <br />
+            Shareable Fleet Debugger URL <a href={deepLink}>{deepLink}</a>
           </span>,
           { autoClose: false }
         );
