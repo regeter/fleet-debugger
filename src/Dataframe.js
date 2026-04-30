@@ -11,7 +11,7 @@ const DEFAULT_COLUMN_PATHS = [
   "formattedDate",
   "@type",
   "lastlocation.rawlocationsensor",
-  "lastlocationResponse.locationsensor",
+  "lastlocation.locationsensor",
   "response.vehiclestate",
   "response.state",
   "response.tripstatus",
